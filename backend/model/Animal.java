@@ -11,7 +11,7 @@ public class Animal {
     private LocalDate dataResgate;
     private String statusAdocao;
 
-    public Animal{String nome; String especie; String raca;int idade; String porte;String esdadoSaude; LocalDate dataResgate; String statusAdocao}{
+    public Animal{String nome; String especie; String raca;int idade; String porte;String estadoSaude; LocalDate dataResgate; String statusAdocao}{
         this.nome=nome;
         this.especie=especie;
         this.raca=raca;
@@ -94,6 +94,7 @@ public class Animal {
      public boolean estaDisponivelParaAdocao() {
         return "Disponível".equalsIgnoreCase(statusAdocao)
                 && !"Crítico".equalsIgnoreCase(estadoSaude);
+     }
 
 
 }
