@@ -5,7 +5,6 @@ import backend.model.Animal;
 import backend.model.SolicitacaoAdocao;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class AdocaoService {
     private List<SolicitacaoAdocao> solicitacoes = new ArrayList<>();
