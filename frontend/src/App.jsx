@@ -1,122 +1,80 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import './App.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+// Exemplo de dados dos animais (substitua pelas informações e fotos dos seus pets!)
+const MEUS_PETS = [
+  {
+    id: 1,
+    nome: 'Rex',
+    especie: 'Cachorro',
+    idade: '2 anos',
+    descricao: 'Muito brincalhão e adorável. Adora correr no quintal.',
+    // Substitua a URL abaixo pelo caminho da foto do seu pet (ex: '/fotos/rex.jpg')
+    imagem: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=400'
+  },
+  {
+    id: 2,
+    nome: 'Mimi',
+    especie: 'Gato',
+    idade: '1 ano',
+    descricao: 'Carinhosa, tranquila e ama um dengo no colo.',
+    imagem: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=400'
+  },
+  {
+    id: 3,
+    nome: 'Thor',
+    especie: 'Cachorro',
+    idade: '3 anos',
+    descricao: 'Protetor, companheiro e muito esperto.',
+    imagem: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=400'
+  }
+];
+
+export default function App() {
+  const [animais] = useState(MEUS_PETS);
+  const [busca, setBusca] = useState('');
+
+  const animaisFiltrados = animais.filter(animal =>
+    animal.nome.toLowerCase().includes(busca.toLowerCase()) ||
+    animal.especie.toLowerCase().includes(busca.toLowerCase())
+  );
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app-container">
+      {/* Cabeçalho */}
+      <header className="header">
+        <h1>🐾 Abrigo de Animais</h1>
+        <p>Sistema de Adoção & Gestão de Pets</p>
+      </header>
 
-      <div className="ticks"></div>
+      {/* Conteúdo Principal */}
+      <main className="content">
+        <section className="busca-section">
+          <h2>Exemplos de Animais para Adoção</h2>
+          <input
+            type="text"
+            placeholder="Buscar por nome ou espécie..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="input-busca"
+          />
+        </section>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+        {/* Galeria de Animais */}
+        <div className="cards-grid">
+          {animaisFiltrados.map((animal) => (
+            <div key={animal.id} className="card">
+              <img src={animal.imagem} alt={animal.nome} className="card-img" />
+              <div className="card-body">
+                <h3>{animal.nome}</h3>
+                <span className="badge">{animal.especie}</span> • <span>{animal.idade}</span>
+                <p>{animal.descricao}</p>
+                <button className="btn-adotar">Tenho Interesse</button>
+              </div>
+            </div>
+          ))}
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      </main>
+    </div>
+  );
 }
-
-export default App
