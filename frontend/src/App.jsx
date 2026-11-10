@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import './App.css';
 
-// Fotos de exemplo (Substitua as URLs pelas fotos dos seus animais de casa!)
 const ANIMAIS_INICIAIS = [
-  { id: 1, nome: 'Pipoca', especie: 'Cachorro' },
-  { id: 2, nome: 'Mia', especie: 'Gato'},
-  { id: 3, nome: 'Penosa', especie: 'Galinha'},
-  { id: 4, nome: 'Vicente', especie: 'Cabrito'},
-
+  { id: 1, nome: 'Pipoca', especie: 'Cachorro', imagem:  '/fotos/Cachorro.jpeg'},
+  { id: 2, nome: 'Mia', especie: 'Gato', imagem: '/fotos/Gato.jpeg'},
+  { id: 3, nome: 'Penosa', especie: 'Galinha', imagem: '/fotos/Galinha.jpeg'},
+  { id: 4, nome: 'Vicente', especie: 'Cabrito', imagem: '/fotos/Cabrito.jpeg'},
 ];
 
 export default function App() {
@@ -18,7 +16,7 @@ export default function App() {
   const handleSubmit = (e) => {
     e.preventDefault();
     setMensagemSucesso('Dados salvos com sucesso!');
-    setTimeout(() => setMensagemSucesso(''), 3000); // Esconde a mensagem após 3 segundos
+    setTimeout(() => setMensagemSucesso(''), 3000);
   };
 
   return (
