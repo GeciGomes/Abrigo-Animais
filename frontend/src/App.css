@@ -134,3 +134,198 @@ body {
   border-radius: 4px;
   margin-bottom: 15px;
 } 
+
+.aviso-erro {
+  background-color: #fed7d7;
+  color: #9b2c2c;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.fechar-aviso {
+  float: right;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.form-simples label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.titulo-lista {
+  margin: 24px 0 12px;
+}
+
+.tabela-container {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 15px;
+}
+
+.tabela-container table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.tabela-container th,
+.tabela-container td {
+  padding: 10px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+.tabela-container th {
+  background: #f7fafc;
+}
+
+.tabela-container small {
+  display: block;
+  margin-top: 4px;
+  color: #718096;
+}
+
+.status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-pendente {
+  background: #fefcbf;
+  color: #744210;
+}
+
+.status-aprovado,
+.status-aberta {
+  background: #c6f6d5;
+  color: #22543d;
+}
+
+.status-rejeitado {
+  background: #fed7d7;
+  color: #9b2c2c;
+}
+
+.acoes-tabela {
+  min-width: 180px;
+}
+
+.acoes-tabela button,
+.form-inscricao button {
+  padding: 7px 10px;
+  margin: 0 5px 5px 0;
+  border: 0;
+  border-radius: 4px;
+  background: #38a169;
+  color: white;
+  cursor: pointer;
+}
+
+.acoes-tabela button:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+}
+
+.acoes-tabela .botao-rejeitar {
+  background: #c53030;
+}
+
+.texto-erro {
+  color: #9b2c2c !important;
+}
+
+.lista-atividades {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.card-atividade {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f7fafc;
+}
+
+.card-atividade h3 {
+  margin: 12px 0 8px;
+}
+
+.card-atividade p {
+  margin-top: 8px;
+}
+
+.form-inscricao {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.form-inscricao label {
+  grid-column: 1 / -1;
+}
+
+.form-inscricao select {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+}
+
+.form-inscricao button {
+  margin: 0;
+}
+
+.dica-voluntario {
+  margin-top: 12px;
+}
+
+.link-botao {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #2b6cb0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .layout-body {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .conteudo-principal {
+    margin: 12px;
+    padding: 18px;
+  }
+
+  .estatisticas {
+    flex-wrap: wrap;
+  }
+
+  .acoes-tabela {
+    min-width: 150px;
+  }
+}
