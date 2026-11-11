@@ -36,7 +36,21 @@ const requisicaoApi = async (caminho, opcoes = {}) => {
   } catch (error) {
     throw new Error('Não foi possível conectar ao backend. Verifique se a API Java está em execução.');
   }
-  const conteudo = resposta.status === 204 ? null : await resposta.json();
+  let conteudo = null;
+  if (resposta.status !== 204) {
+    const texto = await resposta.text();
+    if (texto.trim()) {
+      try {
+        conteudo = JSON.parse(texto);
+      } catch {
+        if (resposta.ok) {
+          throw new Error('O backend retornou uma resposta inválida.');
+        }
+      }
+    } else if (resposta.ok) {
+      throw new Error('O backend retornou uma resposta vazia.');
+    }
+  }
   if (!resposta.ok) {
     throw new Error(conteudo?.erro || 'O backend não conseguiu concluir a solicitação.');
   }
