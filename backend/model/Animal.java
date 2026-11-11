@@ -11,6 +11,7 @@ public class Animal {
     private String estadoSaude;
     private LocalDate dataResgate;
     private String statusAdocao;
+    private String imagem;
 
     public Animal(String id, String nome, String especie, String raca, int idade, String porte, String estadoSaude, LocalDate dataResgate, String statusAdocao) {
         this.id = id;
@@ -22,6 +23,12 @@ public class Animal {
         this.estadoSaude = estadoSaude;
         this.dataResgate = dataResgate;
         this.statusAdocao = statusAdocao;
+    }
+
+    public Animal(String id, String nome, String especie, String raca, int idade, String porte, String estadoSaude,
+            LocalDate dataResgate, String statusAdocao, String imagem) {
+        this(id, nome, especie, raca, idade, porte, estadoSaude, dataResgate, statusAdocao);
+        this.imagem = imagem;
     }
 
     public String getId() { 
@@ -90,8 +97,20 @@ public class Animal {
         this.statusAdocao = statusAdocao; 
     }
 
+    public String getImagem() {
+        return imagem;
+    }
+    public void setImagem(String imagem) {
+        this.imagem = imagem;
+    }
+
     public boolean estaDisponivelParaAdocao() {
         return "DISPONIVEL".equalsIgnoreCase(statusAdocao)
-                && !"CRITICO".equalsIgnoreCase(estadoSaude);
+                && !"CRITICO".equalsIgnoreCase(normalizar(estadoSaude));
+    }
+
+    private String normalizar(String valor) {
+        return valor == null ? "" : java.text.Normalizer.normalize(valor, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
     }
 }

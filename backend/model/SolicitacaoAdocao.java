@@ -14,6 +14,7 @@ public class SolicitacaoAdocao {
         this.animal = animal;
         this.adotanteNome = adotanteNome;
         this.adotanteContato = adotanteContato;
+        this.dataSolicitacao = LocalDate.now();
         this.status = "PENDENTE";
     }
 

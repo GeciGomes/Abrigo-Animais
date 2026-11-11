@@ -19,27 +19,29 @@ public class Main {
         animalService.cadastrarAnimal(rex);
         System.out.println("Animal cadastrado: " + rex.getNome() + " | Status: " + rex.getStatusAdocao());
 
+        Veterinario veterinario = new Veterinario("VT001", "Dra. Ana", "ana@abrigo.org", "(11) 99999-0000", "CRMV1234");
         System.out.println("\n--- Testando Controle de Saúde ---");
         LocalDate dataVacina = LocalDate.now();
         
         try {
-            saudeService.registrarAtendimento("R001", "A001", "CRMV1234", "Vacina V10", "VACINA", dataVacina);
+            saudeService.registrarAtendimento("A001", veterinario, "Vacina V10", "VACINA", dataVacina);
             System.out.println("1ª Aplicação da vacina registrada com sucesso.");
 
-            saudeService.registrarAtendimento("R002", "A001", "CRMV1234", "Vacina V10", "VACINA", dataVacina);
+            saudeService.registrarAtendimento("A001", veterinario, "Vacina V10", "VACINA", dataVacina);
         } catch (VacinaDuplicadaException e) {
             System.out.println("[EXCEÇÃO CAPTURADA COM SUCESSO]: " + e.getMessage());
         }
 
         System.out.println("\n--- Testando Processo de Adoção ---");
+        Administrador administrador = new Administrador("ADM001", "Admin", "admin@abrigo.org", "(11) 98888-0000", "Total");
         try {
-            adocaoService.solicitarAdocao("S001", rex, "Maria Silva", "(11) 98888-7777");
+            adocaoService.solicitarAdocao(rex, "Maria Silva", "(11) 98888-7777");
             System.out.println("Solicitação de adoção para " + rex.getNome() + " realizada com sucesso.");
 
-            adocaoService.aprovarAdocao("S001");
+            adocaoService.atualizarSolicitacao("S001", "APROVADO", administrador);
             System.out.println("Adoção aprovada pelo Administrador! Novo status do animal: " + rex.getStatusAdocao());
 
-            adocaoService.solicitarAdocao("S002", rex, "João Santos", "(11) 99999-1111");
+            adocaoService.solicitarAdocao(rex, "João Santos", "(11) 99999-1111");
 
         } catch (AnimalIndisponivelException e) {
             System.out.println("[EXCEÇÃO CAPTURADA COM SUCESSO]: " + e.getMessage());

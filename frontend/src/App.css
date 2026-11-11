@@ -87,7 +87,62 @@ body {
   background-color: #2f855a;
 }
 
-/* Cards dos Pets (Início e Busca) */
+/* Grupo de botões no formulário (Cadastrar / Editar + Cancelar) */
+.botoes-form {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.botoes-form button {
+  flex: 1;
+  margin-top: 0;
+}
+
+.botao-cancelar {
+  background-color: #718096 !important;
+}
+
+.botao-cancelar:hover {
+  background-color: #4a5568 !important;
+}
+
+/* Container de Exemplos na Home (Garante que fiquem perfeitamente lado a lado) */
+.grid-exemplos {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-top: 15px;
+}
+
+.card-exemplo {
+  border: 1px solid #ddd;
+  padding: 10px;
+  border-radius: 6px;
+  width: 160px;
+  text-align: center;
+  background: #fff;
+}
+
+.card-exemplo img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.card-exemplo h4 {
+  margin-top: 8px;
+  font-size: 1rem;
+}
+
+.card-exemplo p {
+  font-size: 0.85rem;
+  margin-top: 4px;
+  color: #4a5568;
+}
+
+/* Cards dos Pets (Busca) */
 .grid-animais {
   display: flex;
   gap: 15px;
@@ -99,8 +154,12 @@ body {
   border: 1px solid #ddd;
   padding: 10px;
   border-radius: 6px;
-  width: 180px;
+  width: 200px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #fff;
 }
 
 .card-pet img {
@@ -108,6 +167,71 @@ body {
   height: 120px;
   object-fit: cover;
   border-radius: 4px;
+}
+
+.card-pet h4 {
+  margin-top: 8px;
+  font-size: 1rem;
+}
+
+.card-pet p {
+  font-size: 0.9rem;
+  margin-top: 4px;
+  color: #4a5568;
+}
+
+/* Ações dentro do Card do Pet */
+.acoes-card {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.acoes-card button {
+  flex: 1;
+  padding: 6px;
+  font-size: 0.85rem;
+  border: 0;
+  border-radius: 4px;
+  background: #3182ce;
+  color: white;
+  cursor: pointer;
+}
+
+.acoes-card button.botao-rejeitar {
+  background: #c53030;
+}
+
+.acoes-card button:hover {
+  opacity: 0.9;
+}
+
+/* Container de Filtros Avançados */
+.filtros-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin: 15px 0 20px 0;
+  background: #f7fafc;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.filtros-container label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: #2d3748;
+}
+
+.filtros-container select {
+  padding: 6px 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  background: white;
 }
 
 /* Estatísticas */
@@ -126,7 +250,7 @@ body {
   width: 150px;
 }
 
-/* Aviso de Sucesso */
+/* Aviso de Sucesso e Erro */
 .aviso-sucesso {
   background-color: #c6f6d5;
   color: #22543d;
@@ -226,7 +350,7 @@ body {
   margin: 0 5px 5px 0;
   border: 0;
   border-radius: 4px;
-  background: #38a169;
+  background: #3182ce;
   color: white;
   cursor: pointer;
 }
