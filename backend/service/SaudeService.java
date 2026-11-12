@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Locale;
 
 public class SaudeService {
     private List<RegistroMedico> registrosMedicos = new ArrayList<>();
@@ -21,7 +22,7 @@ public class SaudeService {
             boolean vacinaDuplicada = registrosMedicos.stream()
                     .anyMatch(r -> r.getAnimalId().equals(animalId)
                             && "VACINA".equalsIgnoreCase(r.getTipo())
-                            && r.getDescricao().equalsIgnoreCase(descricao)
+                            && normalizar(r.getDescricao()).equals(normalizar(descricao))
                             && r.getData().equals(data));
 
             if (vacinaDuplicada) {
@@ -52,5 +53,9 @@ public class SaudeService {
                 .max()
                 .orElse(0);
         return "R" + String.format("%03d", maiorId + 1);
+    }
+
+    private String normalizar(String valor) {
+        return valor == null ? "" : valor.trim().toLowerCase(Locale.ROOT);
     }
 }

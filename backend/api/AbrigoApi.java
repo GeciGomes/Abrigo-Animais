@@ -1,6 +1,10 @@
 package backend.api;
 
 import backend.exception.AcessoNegadoException;
+import backend.exception.AnimalAdotadoException;
+import backend.exception.AnimalIndisponivelException;
+import backend.exception.AutenticacaoException;
+import backend.exception.VacinaDuplicadaException;
 import backend.model.*;
 import backend.service.*;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,6 +25,7 @@ public class AbrigoApi {
     private final ObjectMapper json = new ObjectMapper();
     private final AnimalService animalService = new AnimalService();
     private final UsuarioService usuarioService = new UsuarioService();
+    private final AutenticacaoService autenticacaoService = new AutenticacaoService(usuarioService);
     private final AdocaoService adocaoService = new AdocaoService();
     private final SaudeService saudeService = new SaudeService();
     private final AtividadeService atividadeService = new AtividadeService();
@@ -35,6 +40,16 @@ public class AbrigoApi {
     }
 
     private AbrigoApi() {
+        String emailAdmin = System.getenv("ABRIGO_ADMIN_EMAIL");
+        String senhaAdmin = System.getenv("ABRIGO_ADMIN_PASSWORD");
+        if (emailAdmin == null || emailAdmin.isBlank() || senhaAdmin == null || senhaAdmin.isBlank()) {
+            throw new IllegalStateException("Configure ABRIGO_ADMIN_EMAIL e ABRIGO_ADMIN_PASSWORD para iniciar a API.");
+        }
+        AutenticacaoService.validarSenha(senhaAdmin);
+        Usuario administradorInicial = usuarioService.cadastrar("Administrador",
+                System.getenv().getOrDefault("ABRIGO_ADMIN_NAME", "Administrador inicial"),
+                emailAdmin, "", "", "Total");
+        autenticacaoService.registrarSenha(administradorInicial, senhaAdmin);
         atividadeService.cadastrarAtividade(new Atividade(
                 "AT001", "Mutirão de limpeza", "Ajude a organizar e higienizar os recintos.", LocalDate.now().plusDays(5)));
         atividadeService.cadastrarAtividade(new Atividade(
@@ -51,8 +66,13 @@ public class AbrigoApi {
 
         try {
             route(exchange);
+        } catch (AutenticacaoException exception) {
+            sendError(exchange, 401, exception.getMessage());
         } catch (AcessoNegadoException exception) {
             sendError(exchange, 403, exception.getMessage());
+        } catch (AnimalAdotadoException | AnimalIndisponivelException | VacinaDuplicadaException
+                | IllegalStateException exception) {
+            sendError(exchange, 409, exception.getMessage());
         } catch (NoSuchElementException exception) {
             sendError(exchange, 404, exception.getMessage());
         } catch (IllegalArgumentException | java.time.DateTimeException exception) {
@@ -68,6 +88,10 @@ public class AbrigoApi {
     private void route(HttpExchange exchange) throws IOException {
         String method = exchange.getRequestMethod();
         String[] parts = exchange.getRequestURI().getPath().substring("/api".length()).split("/");
+        if (parts.length >= 2 && "auth".equals(parts[1])) {
+            routeAuth(exchange, parts, method);
+            return;
+        }
         if ("/api/state".equals(exchange.getRequestURI().getPath()) && "GET".equals(method)) {
             sendJson(exchange, 200, state());
             return;
@@ -88,8 +112,28 @@ public class AbrigoApi {
         }
     }
 
+    private void routeAuth(HttpExchange exchange, String[] parts, String method) throws IOException {
+        if (parts.length == 3 && "login".equals(parts[2]) && "POST".equals(method)) {
+            JsonNode body = readBody(exchange);
+            AutenticacaoService.Sessao sessao = autenticacaoService.entrar(text(body, "email"), text(body, "senha"));
+            sendJson(exchange, 200, Map.of("token", sessao.token(), "usuario", userDto(sessao.usuario())));
+        } else if (parts.length == 3 && "logout".equals(parts[2]) && "POST".equals(method)) {
+            String token = token(exchange);
+            autenticado(exchange);
+            autenticacaoService.sair(token);
+            exchange.sendResponseHeaders(204, -1);
+        } else {
+            sendError(exchange, 405, "Método não permitido para autenticação.");
+        }
+    }
+
     private void routeAnimal(HttpExchange exchange, String[] parts, String method) throws IOException {
-        if (parts.length == 2 && "POST".equals(method)) {
+        if (parts.length == 4 && "availability".equals(parts[3]) && "POST".equals(method)) {
+            Animal animal = animalService.buscarPorId(parts[2]);
+            animalService.disponibilizarParaAdocao(animal.getId());
+            sendJson(exchange, 200, animalDto(animal));
+        } else if (parts.length == 2 && "POST".equals(method)) {
+            requireVeterinario(exchange);
             JsonNode body = readBody(exchange);
             Animal animal = animalService.cadastrarAnimal(
                     text(body, "nome"), text(body, "especie"), text(body, "raca"), integer(body, "idade"),
@@ -97,8 +141,13 @@ public class AbrigoApi {
             sendJson(exchange, 201, animalDto(animal));
         } else if (parts.length == 3 && "PUT".equals(method)) {
             JsonNode body = readBody(exchange);
+            Animal existente = animalService.buscarPorId(parts[2]);
+            String estadoSaude = text(body, "estadoSaude");
+            if (!normalizar(existente.getEstadoSaude()).equals(normalizar(estadoSaude))) {
+                requireVeterinario(exchange);
+            }
             Animal animal = animalService.atualizarAnimal(parts[2], text(body, "nome"), text(body, "especie"),
-                    text(body, "raca"), integer(body, "idade"), text(body, "porte"), text(body, "estadoSaude"),
+                    text(body, "raca"), integer(body, "idade"), text(body, "porte"), estadoSaude,
                     optionalDate(body, "dataResgate"), optionalText(body, "imagem"));
             sendJson(exchange, 200, animalDto(animal));
         } else if (parts.length == 3 && "DELETE".equals(method)) {
@@ -111,13 +160,25 @@ public class AbrigoApi {
 
     private void routeUser(HttpExchange exchange, String[] parts, String method) throws IOException {
         if (parts.length == 2 && "POST".equals(method)) {
-            Usuario usuario = saveUser(readBody(exchange), null);
+            requireAdministrador(exchange);
+            JsonNode body = readBody(exchange);
+            Usuario usuario = saveUser(body, null);
             sendJson(exchange, 201, userDto(usuario));
         } else if (parts.length == 3 && "PUT".equals(method)) {
-            Usuario usuario = saveUser(readBody(exchange), parts[2]);
+            requireAdministrador(exchange);
+            JsonNode body = readBody(exchange);
+            String senha = optionalText(body, "senha");
+            Usuario usuario = saveUser(body, parts[2]);
+            if (!senha.isBlank()) {
+                autenticacaoService.registrarSenha(usuario, senha);
+                autenticacaoService.revogarSessoes(usuario.getId(), token(exchange));
+            }
             sendJson(exchange, 200, userDto(usuario));
         } else if (parts.length == 3 && "DELETE".equals(method)) {
+            requireAdministrador(exchange);
+            Usuario usuario = usuarioService.buscarPorId(parts[2]);
             usuarioService.remover(parts[2]);
+            autenticacaoService.revogarSessoes(usuario.getId(), null);
             sendJson(exchange, 200, state());
         } else {
             sendError(exchange, 405, "Método não permitido para usuários.");
@@ -131,15 +192,23 @@ public class AbrigoApi {
         String telefone = text(body, "telefone");
         String crmv = optionalText(body, "crmv");
         String nivelAcesso = optionalText(body, "nivelAcesso");
+        String senha = optionalText(body, "senha");
+        if (id == null || !senha.isBlank()) {
+            AutenticacaoService.validarSenha(senha);
+        }
         if ("Veterinário".equals(tipo) && crmv.isBlank()) {
             throw new IllegalArgumentException("Informe o CRMV do veterinário.");
         }
         if ("Administrador".equals(tipo) && nivelAcesso.isBlank()) {
             throw new IllegalArgumentException("Informe o nível de acesso do administrador.");
         }
-        return id == null
+        Usuario usuario = id == null
                 ? usuarioService.cadastrar(tipo, nome, email, telefone, crmv, nivelAcesso)
                 : usuarioService.atualizar(id, tipo, nome, email, telefone, crmv, nivelAcesso);
+        if (id == null) {
+            autenticacaoService.registrarSenha(usuario, senha);
+        }
+        return usuario;
     }
 
     private void routeRequest(HttpExchange exchange, String[] parts, String method) throws IOException {
@@ -151,7 +220,7 @@ public class AbrigoApi {
             sendJson(exchange, 201, requestDto(solicitacao));
         } else if (parts.length == 3 && "PATCH".equals(method)) {
             JsonNode body = readBody(exchange);
-            Administrador administrador = usuarioService.buscarAdministrador(text(body, "administradorId"));
+            Administrador administrador = requireAdministrador(exchange);
             adocaoService.atualizarSolicitacao(parts[2], text(body, "decisao"), administrador);
             sendJson(exchange, 200, state());
         } else {
@@ -167,7 +236,7 @@ public class AbrigoApi {
         JsonNode body = readBody(exchange);
         String animalId = text(body, "animalId");
         animalService.buscarPorId(animalId);
-        Veterinario veterinario = usuarioService.buscarVeterinario(text(body, "veterinarioId"));
+        Veterinario veterinario = requireVeterinario(exchange);
         RegistroMedico registro = saudeService.registrarAtendimento(animalId, veterinario,
                 text(body, "descricao"), text(body, "tipo"), date(body, "data"));
         sendJson(exchange, 201, recordDto(registro));
@@ -176,7 +245,7 @@ public class AbrigoApi {
     private void routeActivity(HttpExchange exchange, String[] parts, String method) throws IOException {
         if (parts.length == 2 && "POST".equals(method)) {
             JsonNode body = readBody(exchange);
-            Administrador administrador = usuarioService.buscarAdministrador(text(body, "administradorId"));
+            Administrador administrador = requireAdministrador(exchange);
             Atividade atividade = atividadeService.cadastrarAtividade(
                     text(body, "titulo"), text(body, "descricao"), date(body, "data"), administrador);
             sendJson(exchange, 201, activityDto(atividade));
@@ -188,6 +257,43 @@ public class AbrigoApi {
         } else {
             sendError(exchange, 405, "Método não permitido para atividades.");
         }
+    }
+
+    private Usuario autenticado(HttpExchange exchange) {
+        return autenticacaoService.usuarioDaSessao(token(exchange));
+    }
+
+    private Administrador requireAdministrador(HttpExchange exchange) {
+        Usuario usuario = autenticado(exchange);
+        if (!(usuario instanceof Administrador administrador)) {
+            throw new AcessoNegadoException("Apenas administradores podem executar esta ação.");
+        }
+        return administrador;
+    }
+
+    private Veterinario requireVeterinario(HttpExchange exchange) {
+        Usuario usuario = autenticado(exchange);
+        if (!(usuario instanceof Veterinario veterinario)) {
+            throw new AcessoNegadoException("Apenas veterinários podem alterar informações médicas.");
+        }
+        return veterinario;
+    }
+
+    private String token(HttpExchange exchange) {
+        String authorization = exchange.getRequestHeaders().getFirst("Authorization");
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            throw new AutenticacaoException("Autenticação obrigatória.");
+        }
+        String token = authorization.substring("Bearer ".length()).trim();
+        if (token.isEmpty()) {
+            throw new AutenticacaoException("Autenticação obrigatória.");
+        }
+        return token;
+    }
+
+    private String normalizar(String valor) {
+        return valor == null ? "" : java.text.Normalizer.normalize(valor, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     private Map<String, Object> state() {
@@ -330,6 +436,6 @@ public class AbrigoApi {
             exchange.getResponseHeaders().set("Vary", "Origin");
         }
         exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-        exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, Authorization");
     }
 }

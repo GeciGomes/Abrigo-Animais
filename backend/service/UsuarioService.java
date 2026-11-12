@@ -7,6 +7,7 @@ import backend.model.Voluntario;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Locale;
 
 public class UsuarioService {
     private final List<Usuario> usuarios = new ArrayList<>();
@@ -22,8 +23,17 @@ public class UsuarioService {
                 .orElseThrow(() -> new NoSuchElementException("Usuário não encontrado."));
     }
 
+    public Usuario buscarPorEmail(String email) {
+        String emailNormalizado = normalizarEmail(email);
+        return usuarios.stream()
+                .filter(usuario -> normalizarEmail(usuario.getEmail()).equals(emailNormalizado))
+                .findFirst()
+                .orElseThrow(() -> new NoSuchElementException("Usuário não encontrado."));
+    }
+
     public Usuario cadastrar(String tipo, String nome, String email, String telefone, String crmv,
             String nivelAcesso) {
+        validarEmailUnico(email, null);
         String prefixo = switch (tipo) {
             case "Voluntário" -> "V";
             case "Veterinário" -> "VT";
@@ -46,6 +56,7 @@ public class UsuarioService {
     public Usuario atualizar(String id, String tipo, String nome, String email, String telefone,
             String crmv, String nivelAcesso) {
         Usuario anterior = buscarPorId(id);
+        validarEmailUnico(email, id);
         if (!correspondeAoTipo(anterior, tipo)) {
             usuarios.remove(anterior);
             Usuario atualizado = criarInstancia(tipo, id, nome, email, telefone, crmv, nivelAcesso);
@@ -108,5 +119,18 @@ public class UsuarioService {
             case "Administrador" -> new Administrador(id, nome, email, telefone, nivelAcesso);
             default -> throw new IllegalArgumentException("Tipo de usuário inválido.");
         };
+    }
+
+    private void validarEmailUnico(String email, String idIgnorado) {
+        String emailNormalizado = normalizarEmail(email);
+        if (emailNormalizado.isBlank() || usuarios.stream().anyMatch(usuario ->
+                !usuario.getId().equals(idIgnorado)
+                        && normalizarEmail(usuario.getEmail()).equals(emailNormalizado))) {
+            throw new IllegalArgumentException("Informe um e-mail válido e ainda não cadastrado.");
+        }
+    }
+
+    private String normalizarEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
     }
 }

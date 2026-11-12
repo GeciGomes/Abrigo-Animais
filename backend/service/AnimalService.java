@@ -1,6 +1,7 @@
 package backend.service;
 
 import backend.exception.AnimalIndisponivelException;
+import backend.exception.AnimalAdotadoException;
 import backend.model.Animal;
 
 import java.util.ArrayList;
@@ -13,8 +14,10 @@ public class AnimalService {
 
     public Animal cadastrarAnimal(String nome, String especie, String raca, int idade, String porte,
             String estadoSaude, LocalDate dataResgate, String imagem) {
+        String statusAdocao = "CRITICO".equalsIgnoreCase(normalizar(estadoSaude))
+                ? "INDISPONIVEL" : "DISPONIVEL";
         Animal animal = new Animal(proximoId(), nome, especie, raca, idade, porte, estadoSaude,
-                dataResgate, "DISPONIVEL", imagem);
+                dataResgate, statusAdocao, imagem);
         animais.add(animal);
         return animal;
     }
@@ -22,6 +25,9 @@ public class AnimalService {
     public void cadastrarAnimal(Animal animal) {
         if (animais.stream().anyMatch(cadastrado -> cadastrado.getId().equals(animal.getId()))) {
             throw new IllegalArgumentException("Já existe um animal com o ID " + animal.getId() + ".");
+        }
+        if (animal.estaEmTratamentoCritico() && !"ADOTADO".equalsIgnoreCase(animal.getStatusAdocao())) {
+            animal.setStatusAdocao("INDISPONIVEL");
         }
         animais.add(animal);
     }
@@ -52,23 +58,38 @@ public class AnimalService {
         animal.setIdade(idade);
         animal.setPorte(porte);
         animal.setEstadoSaude(estadoSaude);
+        if (animal.estaEmTratamentoCritico() && !"ADOTADO".equalsIgnoreCase(animal.getStatusAdocao())) {
+            animal.setStatusAdocao("INDISPONIVEL");
+        }
         animal.setDataResgate(dataResgate);
         animal.setImagem(imagem);
         return animal;
     }
 
     public void removerAnimal(String id) {
-        animais.remove(buscarPorId(id));
+        Animal animal = buscarPorId(id);
+        if ("ADOTADO".equalsIgnoreCase(animal.getStatusAdocao())) {
+            throw new AnimalAdotadoException("Animais adotados não podem ser removidos do histórico.");
+        }
+        animais.remove(animal);
     }
 
     public void disponibilizarParaAdocao(String id) {
         Animal animal = buscarPorId(id);
         
-        if ("CRITICO".equalsIgnoreCase(animal.getEstadoSaude())) {
+        if (animal.estaEmTratamentoCritico()) {
             throw new AnimalIndisponivelException("Animais em tratamento crítico não podem ser disponibilizados para adoção.");
+        }
+        if ("ADOTADO".equalsIgnoreCase(animal.getStatusAdocao())) {
+            throw new AnimalAdotadoException("Um animal adotado não pode voltar a ser disponibilizado para adoção.");
         }
         
         animal.setStatusAdocao("DISPONIVEL");
+    }
+
+    private String normalizar(String valor) {
+        return valor == null ? "" : java.text.Normalizer.normalize(valor, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").trim();
     }
 
     private String proximoId() {

@@ -106,7 +106,11 @@ public class Animal {
 
     public boolean estaDisponivelParaAdocao() {
         return "DISPONIVEL".equalsIgnoreCase(statusAdocao)
-                && !"CRITICO".equalsIgnoreCase(normalizar(estadoSaude));
+                && !estaEmTratamentoCritico();
+    }
+
+    public boolean estaEmTratamentoCritico() {
+        return "CRITICO".equalsIgnoreCase(normalizar(estadoSaude).trim());
     }
 
     private String normalizar(String valor) {
