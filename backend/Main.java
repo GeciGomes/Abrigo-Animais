@@ -5,11 +5,14 @@ import backend.exception.VacinaDuplicadaException;
 import backend.model.*;
 import backend.service.*;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 public class Main {
+    private static final DateTimeFormatter FORMATO_DATA = DateTimeFormatter.ofPattern("dd/MM/uuuu");
+
     public static void main(String[] args) {
         AnimalService animalService = new AnimalService();
         UsuarioService usuarioService = new UsuarioService();
@@ -80,10 +83,9 @@ public class Main {
         String porte = lerTexto(scanner, "Porte: ");
         String estadoSaude = lerTexto(scanner, "Estado de saúde: ");
         LocalDate dataResgate = lerData(scanner, "Data do resgate");
-        String imagem = lerTexto(scanner, "Imagem (opcional): ");
 
         Animal animal = animalService.cadastrarAnimal(nome, especie, raca, idade, porte, estadoSaude,
-                dataResgate, imagem.isBlank() ? null : imagem);
+                dataResgate, null);
         System.out.println("Animal cadastrado com o ID " + animal.getId() + ".");
     }
 
@@ -251,14 +253,15 @@ public class Main {
 
     private static LocalDate lerData(Scanner scanner, String campo) {
         while (true) {
-            String valor = lerTexto(scanner, campo + " (AAAA-MM-DD; Enter usa a data atual): ");
+            String valor = lerTexto(scanner,
+                    campo + " (DD/MM/AAAA; deixe em branco para usar a data de hoje): ");
             if (valor.isBlank()) {
                 return LocalDate.now();
             }
             try {
-                return LocalDate.parse(valor);
+                return LocalDate.parse(valor, FORMATO_DATA);
             } catch (DateTimeParseException exception) {
-                System.out.println("Data inválida. Use o formato AAAA-MM-DD.");
+                System.out.println("Data inválida. Digite no formato DD/MM/AAAA.");
             }
         }
     }

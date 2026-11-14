@@ -3,11 +3,6 @@
 Sistema de gerenciamento de abrigos e resgates de animais, em Java (console).  
 Trabalho final de Programação Orientada a Objetos.
 
-## Requisitos
-
-- Java 21
-- Maven
-
 ## Como executar
 
 1. Clone o repositório e entre na pasta do projeto, onde está o `pom.xml`:
