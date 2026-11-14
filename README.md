@@ -1,17 +1,14 @@
 # Abrigo-Animais
+Sistema de gerenciamento de abrigos e resgates de animais, em Java (console).
+Trabalho final de Programação Orientada a Objetos.
 
-Sistema de gerenciamento de abrigos e resgates de animais.
-
----
-
-## Passo a Passo para executar o Projeto
-
-1. **Navegue até a raiz do projeto** (onde o arquivo `pom.xml` se encontra):
-   ```bash
-   cd /caminho/para/Abrigo-Animais
+## Como executar
+1. Clone o repositório e entre na pasta do projeto (onde está o `pom.xml`):
    ```
-
-2. **Execute o comando do Maven no terminal:**
-   ```bash
-   mvn clean compile exec:java -Dexec.mainClass=backend.api.AbrigoApi
+   git clone https://github.com/GeciGomes/Abrigo-Animais.git
+   cd Abrigo-Animais
+   ```
+2. Compile e execute:
+   ```
+   mvn clean compile exec:java -Dexec.mainClass=<pacote.ClasseDoMain>
    ```
