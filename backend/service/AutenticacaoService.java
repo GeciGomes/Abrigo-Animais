@@ -1,6 +1,7 @@
 package backend.service;
 
 import backend.exception.AutenticacaoException;
+import backend.model.Administrador;
 import backend.model.Usuario;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
@@ -26,13 +27,33 @@ public class AutenticacaoService {
     }
 
     public static void validarSenha(String senha) {
-        if (senha == null || senha.length() < 12) {
-            throw new IllegalArgumentException("A senha deve ter pelo menos 12 caracteres.");
+        validarSenha(senha, 12);
+    }
+
+    public static void validarSenhaAdministrador(String senha) {
+        validarSenha(senha, 6);
+    }
+
+    public static void validarSenha(String senha, String tipoUsuario) {
+        if ("Administrador".equals(tipoUsuario)) {
+            validarSenhaAdministrador(senha);
+        } else {
+            validarSenha(senha);
+        }
+    }
+
+    private static void validarSenha(String senha, int minimo) {
+        if (senha == null || senha.length() < minimo) {
+            throw new IllegalArgumentException("A senha deve ter pelo menos " + minimo + " caracteres.");
         }
     }
 
     public void registrarSenha(Usuario usuario, String senha) {
-        validarSenha(senha);
+        if (usuario instanceof Administrador) {
+            validarSenhaAdministrador(senha);
+        } else {
+            validarSenha(senha);
+        }
         byte[] salt = new byte[SALT_LENGTH];
         RANDOM.nextBytes(salt);
         credenciais.put(usuario.getId(), new Credencial(salt, derivar(senha, salt)));
@@ -48,6 +69,9 @@ public class AutenticacaoService {
         Credencial credencial = credenciais.get(usuario.getId());
         if (credencial == null || !MessageDigest.isEqual(credencial.hash, derivar(senha, credencial.salt))) {
             throw new AutenticacaoException("E-mail ou senha inválidos.");
+        }
+        if (!usuario.isAprovado()) {
+            throw new AutenticacaoException("Seu cadastro aguarda aprovação do administrador.");
         }
 
         byte[] tokenBytes = new byte[32];

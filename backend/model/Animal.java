@@ -1,7 +1,7 @@
 package backend.model;
 import java.time.LocalDate;
 
-public class Animal {
+public class Animal implements Identificavel {
     private String id;
     private String nome;
     private String especie;
@@ -12,6 +12,8 @@ public class Animal {
     private LocalDate dataResgate;
     private String statusAdocao;
     private String imagem;
+    private String voluntarioResponsavelId;
+    private boolean arquivado;
 
     public Animal(String id, String nome, String especie, String raca, int idade, String porte, String estadoSaude, LocalDate dataResgate, String statusAdocao) {
         this.id = id;
@@ -104,9 +106,24 @@ public class Animal {
         this.imagem = imagem;
     }
 
+    public String getVoluntarioResponsavelId() {
+        return voluntarioResponsavelId;
+    }
+    public void setVoluntarioResponsavelId(String voluntarioResponsavelId) {
+        this.voluntarioResponsavelId = voluntarioResponsavelId;
+    }
+
+    public boolean isArquivado() {
+        return arquivado;
+    }
+    public void setArquivado(boolean arquivado) {
+        this.arquivado = arquivado;
+    }
+
     public boolean estaDisponivelParaAdocao() {
         return "DISPONIVEL".equalsIgnoreCase(statusAdocao)
-                && !estaEmTratamentoCritico();
+                && !estaEmTratamentoCritico()
+                && !arquivado;
     }
 
     public boolean estaEmTratamentoCritico() {

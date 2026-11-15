@@ -537,8 +537,14 @@ export default function App() {
                 <label>Nome completo:<input name="nome" type="text" required defaultValue={usuarioEditando?.nome || ''} /></label>
                 <label>E-mail:<input name="email" type="email" required defaultValue={usuarioEditando?.email || ''} /></label>
                 <label>Telefone:<input name="telefone" type="tel" required defaultValue={usuarioEditando?.telefone || ''} /></label>
-                <label>Senha {usuarioEditando ? '(deixe em branco para manter a atual)' : '(mínimo 12 caracteres)'}:
-                  <input name="senha" type="password" minLength="12" required={!usuarioEditando} autoComplete="new-password" />
+                <label>Senha {usuarioEditando ? '(deixe em branco para manter a atual)' : `(mínimo ${tipoUsuario === 'Administrador' ? 6 : 12} caracteres)`}:
+                  <input
+                    name="senha"
+                    type="password"
+                    minLength={tipoUsuario === 'Administrador' ? 6 : 12}
+                    required={!usuarioEditando}
+                    autoComplete="new-password"
+                  />
                 </label>
                 {tipoUsuario === 'Veterinário' && (
                   <label>CRMV (obrigatório para veterinários):

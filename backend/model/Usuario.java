@@ -1,10 +1,11 @@
 package backend.model;
 
-public abstract class Usuario {
+public abstract class Usuario implements Identificavel {
     private String id;
     private String nome;
     private String email;
     private String telefone;
+    private boolean aprovado = true;
 
     public Usuario(String id, String nome, String email, String telefone) {
         this.id = id;
@@ -39,5 +40,13 @@ public abstract class Usuario {
     }
     public void setTelefone(String telefone) { 
         this.telefone = telefone; 
+    }
+
+    public boolean isAprovado() {
+        return aprovado;
+    }
+
+    public void setAprovado(boolean aprovado) {
+        this.aprovado = aprovado;
     }
 }
