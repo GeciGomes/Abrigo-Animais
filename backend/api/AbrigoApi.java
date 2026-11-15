@@ -312,7 +312,7 @@ public class AbrigoApi {
             }
             sendJson(exchange, 200, userDto(usuario));
         } else if (parts.length == 3 && "DELETE".equals(method)) {
-            Administrador administrador = requireAdministrador(exchange);
+            requireAdministrador(exchange);
             Usuario usuario = usuarioService.buscarPorId(parts[2]);
             if (usuario instanceof Administrador alvo) {
                 throw new AcessoNegadoException(
