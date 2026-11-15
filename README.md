@@ -18,7 +18,9 @@ Trabalho final de Programação Orientada a Objetos.
    ```
 
 ## Primeiro acesso e perfis
-- Na primeira execução, configure a conta do administrador inicial. Depois, o programa volta ao menu inicial para você escolher entre entrar e criar uma conta de voluntário ou veterinário.
-- Depois, o administrador pode cadastrar usuários. Também é possível criar uma conta pública de voluntário ou veterinário; o cadastro de veterinário precisa ser aprovado pelo administrador.
-- A senha do administrador deve ter pelo menos 6 caracteres; as senhas de voluntários e veterinários devem ter pelo menos 12. O perfil autenticado determina quais opções do menu ficam disponíveis; use `0` para sair da conta.
-- Os dados e as contas ficam em memória e são perdidos ao encerrar o programa. Ao iniciar novamente, será necessário criar o administrador inicial outra vez.
+- No menu inicial, escolha fazer login ou cadastrar uma conta de voluntário, veterinário ou administrador. O primeiro administrador cadastrado se torna o administrador principal e recebe o ID fixo `ADM001`.
+- Depois que o administrador principal existe, somente ele, após fazer login, pode cadastrar outros administradores pelo menu de usuários. Administradores secundários não podem criar outros administradores.
+- Voluntários podem criar conta pública. Veterinários também podem se cadastrar, mas precisam da aprovação de um administrador para entrar.
+- As contas são salvas localmente em `~/.abrigo-animais/contas.json`; as senhas são armazenadas como hashes. Os demais dados do abrigo continuam em memória e são perdidos ao encerrar o programa.
+- A conta principal não pode ser rebaixada nem removida.
+- As senhas de todos os perfis devem ter pelo menos 6 caracteres. O perfil autenticado determina quais opções do menu ficam disponíveis; use `0` para sair da conta.

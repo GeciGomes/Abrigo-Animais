@@ -51,11 +51,10 @@ public class AbrigoApi {
             throw new IllegalStateException("Configure ABRIGO_ADMIN_EMAIL e ABRIGO_ADMIN_PASSWORD para iniciar a API.");
         }
         AutenticacaoService.validarSenhaAdministrador(senhaAdmin);
-        Usuario administradorInicialUsuario = usuarioService.cadastrar("Administrador",
+        Administrador administradorInicial = usuarioService.cadastrarAdministradorInicial(
                 System.getenv().getOrDefault("ABRIGO_ADMIN_NAME", "Administrador inicial"),
-                emailAdmin, "", "", "Total");
-        autenticacaoService.registrarSenha(administradorInicialUsuario, senhaAdmin);
-        Administrador administradorInicial = usuarioService.buscarAdministrador(administradorInicialUsuario.getId());
+                emailAdmin, "");
+        autenticacaoService.registrarSenha(administradorInicial, senhaAdmin);
         atividadeService.cadastrarAtividade(Atividade.Tipo.MUTIRAO_LIMPEZA, "Mutirão de limpeza",
                 "Ajude a organizar e higienizar os recintos.", LocalDate.now().plusDays(5), administradorInicial);
         atividadeService.cadastrarAtividade(Atividade.Tipo.FEIRA_ADOCAO, "Feira de adoção",
@@ -276,14 +275,36 @@ public class AbrigoApi {
             veterinario.setAprovado(true);
             sendJson(exchange, 200, userDto(veterinario));
         } else if (parts.length == 2 && "POST".equals(method)) {
-            requireAdministrador(exchange);
+            Administrador administrador = requireAdministrador(exchange);
             JsonNode body = readBody(exchange);
+            if ("Administrador".equals(text(body, "tipo")) && !administrador.isPrincipal()) {
+                throw new AcessoNegadoException(
+                        "Somente o administrador principal pode criar outros administradores.");
+            }
             Usuario usuario = saveUser(body, null);
             sendJson(exchange, 201, userDto(usuario));
         } else if (parts.length == 3 && "PUT".equals(method)) {
-            requireAdministrador(exchange);
+            Administrador administrador = requireAdministrador(exchange);
             JsonNode body = readBody(exchange);
+            Usuario existente = usuarioService.buscarPorId(parts[2]);
+            String tipoAtualizado = text(body, "tipo");
+            if (existente instanceof Administrador alvo) {
+                if (alvo.isPrincipal() && !"Administrador".equals(tipoAtualizado)) {
+                    throw new IllegalArgumentException("O administrador principal não pode ser rebaixado.");
+                }
+                if (!alvo.isPrincipal() && !administrador.isPrincipal()) {
+                    throw new AcessoNegadoException(
+                            "Somente o administrador principal pode alterar outros administradores.");
+                }
+            } else if ("Administrador".equals(tipoAtualizado) && !administrador.isPrincipal()) {
+                throw new AcessoNegadoException(
+                        "Somente o administrador principal pode promover usuários a administradores.");
+            }
             String senha = optionalText(body, "senha");
+            if (!mesmoPerfil(existente, tipoAtualizado) && senha.isBlank()) {
+                throw new IllegalArgumentException(
+                        "Informe uma nova senha ao alterar o perfil de um usuário.");
+            }
             Usuario usuario = saveUser(body, parts[2]);
             if (!senha.isBlank()) {
                 autenticacaoService.registrarSenha(usuario, senha);
@@ -291,8 +312,17 @@ public class AbrigoApi {
             }
             sendJson(exchange, 200, userDto(usuario));
         } else if (parts.length == 3 && "DELETE".equals(method)) {
-            requireAdministrador(exchange);
+            Administrador administrador = requireAdministrador(exchange);
             Usuario usuario = usuarioService.buscarPorId(parts[2]);
+            if (usuario instanceof Administrador alvo) {
+                if (alvo.isPrincipal()) {
+                    throw new IllegalArgumentException("O administrador principal não pode ser removido.");
+                }
+                if (!administrador.isPrincipal()) {
+                    throw new AcessoNegadoException(
+                            "Somente o administrador principal pode remover outros administradores.");
+                }
+            }
             if (usuario instanceof Voluntario) {
                 animalService.removerAtribuicoesDoVoluntario(usuario.getId());
             }
@@ -752,11 +782,21 @@ public class AbrigoApi {
             dto.put("crmv", veterinario.getCrmv());
         } else if (usuario instanceof Administrador administrador) {
             dto.put("nivelAcesso", administrador.getNivelAcesso());
+            dto.put("administradorPrincipal", administrador.isPrincipal());
         } else if (usuario instanceof Voluntario voluntario) {
             dto.put("atividadesInscritas", voluntario.getAtividadesInscritas());
             dto.put("historicoParticipacoes", voluntario.getHistoricoParticipacoes());
         }
         return dto;
+    }
+
+    private boolean mesmoPerfil(Usuario usuario, String tipo) {
+        return switch (tipo) {
+            case "Administrador" -> usuario instanceof Administrador;
+            case "Veterinário" -> usuario instanceof Veterinario;
+            case "Voluntário" -> usuario instanceof Voluntario;
+            default -> false;
+        };
     }
 
     private Map<String, Object> requestDto(SolicitacaoAdocao solicitacao) {

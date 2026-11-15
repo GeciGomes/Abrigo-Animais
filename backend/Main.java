@@ -5,6 +5,7 @@ import backend.exception.AutenticacaoException;
 import backend.exception.VacinaDuplicadaException;
 import backend.model.*;
 import backend.service.*;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -24,6 +25,13 @@ public class Main {
         AtividadeService atividadeService = new AtividadeService();
         NotificacaoService notificacaoService = new NotificacaoService();
         RelatorioService relatorioService = new RelatorioService(animalService, adocaoService, usuarioService);
+        ArmazenamentoContas armazenamentoContas = new ArmazenamentoContas();
+        try {
+            armazenamentoContas.carregar(usuarioService, autenticacaoService);
+        } catch (IOException | IllegalArgumentException exception) {
+            System.err.println("Não foi possível carregar as contas salvas: " + exception.getMessage());
+            return;
+        }
 
         try (Scanner scanner = new Scanner(System.in)) {
             System.out.println("=== SISTEMA DE GERENCIAMENTO DE ABRIGOS E RESGATES ===");
@@ -32,7 +40,7 @@ public class Main {
             while (executando) {
                 AutenticacaoService.Sessao sessao;
                 try {
-                    sessao = menuAcesso(scanner, usuarioService, autenticacaoService);
+                    sessao = menuAcesso(scanner, usuarioService, autenticacaoService, armazenamentoContas);
                 } catch (EntradaEncerradaException exception) {
                     break;
                 }
@@ -50,7 +58,7 @@ public class Main {
                         if (opcao == 0) {
                             autenticacaoService.sair(sessao.token());
                             sessaoAtiva = false;
-                            System.out.println("Você saiu da conta.");
+                            System.out.println("Você saiu da conta com sucesso.");
                             continue;
                         }
                         if (!podeExecutar(usuarioAtivo, opcao)) {
@@ -66,7 +74,8 @@ public class Main {
                                     adocaoService, notificacaoService);
                             case 5 -> registrarAtendimento(scanner, animalService,
                                     (Veterinario) usuarioAtivo, saudeService);
-                            case 6 -> cadastrarUsuario(scanner, usuarioService, autenticacaoService);
+                            case 6 -> cadastrarUsuario(scanner, usuarioService, autenticacaoService,
+                                    (Administrador) usuarioAtivo, armazenamentoContas);
                             case 7 -> listarUsuarios(usuarioService);
                             case 8 -> cadastrarAtividade(scanner, (Administrador) usuarioAtivo, atividadeService);
                             case 9 -> inscreverVoluntario(scanner, (Voluntario) usuarioAtivo, atividadeService);
@@ -82,7 +91,8 @@ public class Main {
                                     saudeService, notificacaoService);
                             case 18 -> publicarAviso(scanner, (Administrador) usuarioAtivo, notificacaoService);
                             case 19 -> exibirRelatorioEstatistico((Administrador) usuarioAtivo, relatorioService);
-                            case 20 -> aprovarVeterinario(scanner, usuarioService);
+                            case 20 -> aprovarVeterinario(scanner, usuarioService,
+                                    autenticacaoService, armazenamentoContas);
                             default -> System.out.println("Opção inválida. Tente novamente.");
                         }
                     } catch (AnimalIndisponivelException | VacinaDuplicadaException
@@ -96,50 +106,37 @@ public class Main {
                     }
                 }
             }
-        }
+            } catch (IOException exception) {
+                System.err.println("Não foi possível salvar as contas: " + exception.getMessage());
+            }
 
         System.out.println("Sistema encerrado.");
     }
 
     private static AutenticacaoService.Sessao menuAcesso(Scanner scanner, UsuarioService usuarioService,
-            AutenticacaoService autenticacaoService) {
+            AutenticacaoService autenticacaoService, ArmazenamentoContas armazenamentoContas)
+            throws IOException {
         while (true) {
-            boolean administradorConfigurado = usuarioService.listarTodos().stream()
-                    .anyMatch(Administrador.class::isInstance);
-            if (!administradorConfigurado) {
-                System.out.println("""
+            System.out.println("""
 
-                        --- CONFIGURAÇÃO INICIAL ---
-                        Ainda não existe um administrador. Configure a primeira conta para proteger o sistema.
-                        1. Criar primeiro administrador
-                        0. Sair
-                        """);
-            } else {
-                System.out.println("""
-
-                        --- ABRIGO DE ANIMAIS ---
-                        1. Fazer login
-                        2. Criar conta de voluntário ou veterinário
-                        0. Sair
-                        """);
-            }
+                    --- ABRIGO DE ANIMAIS ---
+                    1. Fazer login
+                    2. Cadastrar usuário
+                    0. Sair
+                    """);
 
             try {
                 int opcao = lerInteiro(scanner, "Escolha uma opção: ");
                 if (opcao == 0) {
                     return null;
                 }
-                if (!administradorConfigurado && opcao == 1) {
-                    cadastrarPrimeiroAdministrador(scanner, usuarioService, autenticacaoService);
-                    continue;
-                }
-                if (administradorConfigurado && opcao == 1) {
+                if (opcao == 1) {
                     String email = lerTexto(scanner, "E-mail: ");
                     String senha = lerTexto(scanner, "Senha: ");
                     return autenticacaoService.entrar(email, senha);
                 }
-                if (administradorConfigurado && opcao == 2) {
-                    cadastrarContaPublica(scanner, usuarioService, autenticacaoService);
+                if (opcao == 2) {
+                    cadastrarConta(scanner, usuarioService, autenticacaoService, armazenamentoContas);
                     continue;
                 }
                 System.out.println("Opção inválida. Tente novamente.");
@@ -151,28 +148,48 @@ public class Main {
     }
 
     private static void cadastrarPrimeiroAdministrador(Scanner scanner,
-            UsuarioService usuarioService, AutenticacaoService autenticacaoService) {
-        System.out.println("\n--- Criar primeiro administrador ---");
-        String nome = lerTexto(scanner, "Nome: ");
-        String email = lerTexto(scanner, "E-mail: ");
-        String telefone = lerTexto(scanner, "Telefone: ");
-        String senha = lerTexto(scanner, "Senha (mínimo 6 caracteres): ");
-        AutenticacaoService.validarSenhaAdministrador(senha);
-
-        Usuario administrador = usuarioService.cadastrar("Administrador", nome, email, telefone, "", "Total");
-        autenticacaoService.registrarSenha(administrador, senha);
-        System.out.println("Administrador inicial criado. Agora escolha entrar ou criar outra conta.");
+            UsuarioService usuarioService, AutenticacaoService autenticacaoService,
+            ArmazenamentoContas armazenamentoContas) throws IOException {
+        Usuario administrador = cadastrarContaPorTipo(
+                scanner, usuarioService, autenticacaoService, "Administrador", true);
+        armazenamentoContas.salvar(usuarioService, autenticacaoService);
+        System.out.println("Primeiro administrador principal criado com sucesso! ID: "
+                + administrador.getId() + ". Agora você já pode fazer login.");
     }
 
-    private static void cadastrarContaPublica(Scanner scanner, UsuarioService usuarioService,
-            AutenticacaoService autenticacaoService) {
+    private static void cadastrarConta(Scanner scanner, UsuarioService usuarioService,
+            AutenticacaoService autenticacaoService, ArmazenamentoContas armazenamentoContas)
+            throws IOException {
         System.out.println("\n--- Criar conta ---");
-        int tipoOpcao = lerInteiro(scanner, "Tipo (1 - voluntário, 2 - veterinário): ");
+        boolean administradorConfigurado = usuarioService.listarTodos().stream()
+                .anyMatch(Administrador.class::isInstance);
+        String promptTipo = administradorConfigurado
+                ? "Tipo (1 - voluntário, 2 - veterinário): "
+                : "Tipo (1 - voluntário, 2 - veterinário, 3 - administrador principal): ";
+        int tipoOpcao = lerInteiro(scanner, promptTipo);
         String tipo = switch (tipoOpcao) {
             case 1 -> "Voluntário";
             case 2 -> "Veterinário";
-            default -> throw new IllegalArgumentException("Escolha voluntário ou veterinário.");
+            case 3 -> {
+                if (administradorConfigurado) {
+                    throw new IllegalArgumentException(
+                            "Para cadastrar outro administrador, entre com a conta do administrador principal.");
+                }
+                yield "Administrador";
+            }
+            default -> throw new IllegalArgumentException("Escolha um dos tipos de usuário disponíveis.");
         };
+        if ("Administrador".equals(tipo) && !administradorConfigurado) {
+            cadastrarPrimeiroAdministrador(scanner, usuarioService, autenticacaoService, armazenamentoContas);
+            return;
+        }
+        Usuario usuario = cadastrarContaPorTipo(scanner, usuarioService, autenticacaoService, tipo, false);
+        armazenamentoContas.salvar(usuarioService, autenticacaoService);
+        exibirMensagemCadastro(usuario);
+    }
+
+    private static Usuario cadastrarContaPorTipo(Scanner scanner, UsuarioService usuarioService,
+            AutenticacaoService autenticacaoService, String tipo, boolean administradorPrincipal) {
         String nome = lerTexto(scanner, "Nome: ");
         String email = lerTexto(scanner, "E-mail: ");
         String telefone = lerTexto(scanner, "Telefone: ");
@@ -180,24 +197,48 @@ public class Main {
         if (tipo.equals("Veterinário") && crmv.isBlank()) {
             throw new IllegalArgumentException("Informe o CRMV do veterinário.");
         }
-        String senha = lerTexto(scanner, "Senha (mínimo 12 caracteres): ");
+        String promptSenha = administradorPrincipal
+                ? "Senha do primeiro administrador principal (mínimo 6 caracteres): "
+                : switch (tipo) {
+                    case "Administrador" -> "Senha do novo administrador (mínimo 6 caracteres): ";
+                    case "Veterinário" -> "Senha do novo veterinário (mínimo 6 caracteres): ";
+                    default -> "Senha do novo voluntário (mínimo 6 caracteres): ";
+                };
+        String senha = lerTexto(scanner, promptSenha);
         AutenticacaoService.validarSenha(senha);
 
-        Usuario usuario = usuarioService.cadastrar(tipo, nome, email, telefone, crmv, "");
+        Usuario usuario = administradorPrincipal
+                ? usuarioService.cadastrarAdministradorInicial(nome, email, telefone)
+                : usuarioService.cadastrar(tipo, nome, email, telefone, crmv, "");
         if (usuario instanceof Veterinario veterinario) {
             veterinario.setAprovado(false);
         }
         autenticacaoService.registrarSenha(usuario, senha);
-        if (usuario instanceof Veterinario) {
-            System.out.println("Cadastro enviado. Aguarde a aprovação de um administrador antes de entrar.");
+        return usuario;
+    }
+
+    private static void exibirMensagemCadastro(Usuario usuario) {
+        if (usuario instanceof Administrador administrador) {
+            if (administrador.isPrincipal()) {
+                System.out.println("Primeiro administrador principal criado com sucesso! ID: "
+                        + administrador.getId() + ".");
+            } else {
+                System.out.println("Novo administrador criado com sucesso! ID: "
+                        + administrador.getId() + ".");
+            }
+        } else if (usuario instanceof Veterinario) {
+            System.out.println("Cadastro de veterinário recebido com sucesso! ID: "
+                    + usuario.getId() + ". Aguarde a aprovação do administrador para entrar.");
         } else {
-            System.out.println("Cadastro concluído. Agora você já pode fazer login.");
+            System.out.println("Cadastro de voluntário concluído com sucesso! ID: "
+                    + usuario.getId() + ". Você já pode fazer login.");
         }
     }
 
     private static String tipoUsuario(Usuario usuario) {
         if (usuario instanceof Administrador) {
-            return "Administrador";
+            return ((Administrador) usuario).isPrincipal()
+                    ? "Administrador principal" : "Administrador";
         }
         if (usuario instanceof Veterinario) {
             return "Veterinário";
@@ -289,7 +330,7 @@ public class Main {
         Animal animal = animalService.cadastrarAnimal(nome, especie, raca, idade, porte, estadoSaude,
                 dataResgate, null, null, statusAdocao);
         notificacaoService.notificarNovoAnimal(animal);
-        System.out.println("Animal cadastrado com o ID " + animal.getId() + ".");
+        System.out.println("Animal cadastrado com sucesso! ID: " + animal.getId() + ".");
     }
 
     private static void listarAnimais(AnimalService animalService) {
@@ -356,14 +397,15 @@ public class Main {
                 porte.isBlank() ? animal.getPorte() : porte,
                 estadoSaude.isBlank() ? animal.getEstadoSaude() : estadoSaude,
                 dataResgate, animal.getImagem(), animal.getVoluntarioResponsavelId(), statusAdocao);
-        System.out.println("Animal " + id + " atualizado.");
+        System.out.println("Animal " + id + " atualizado com sucesso.");
     }
 
     private static void removerAnimal(Scanner scanner, AnimalService animalService) {
         System.out.println("\n--- Remover animal ---");
         String id = lerTexto(scanner, "ID do animal: ");
         animalService.removerAnimal(id);
-        System.out.println("Animal " + id + " removido da lista ativa.");
+        System.out.println("Animal " + id
+                + " removido da lista ativa com sucesso. O histórico foi preservado.");
     }
 
     private static String lerStatusAdocao(Scanner scanner) {
@@ -386,8 +428,8 @@ public class Main {
         String contato = lerTexto(scanner, "Contato do cliente/adotante: ");
         SolicitacaoAdocao solicitacao = adocaoService.solicitarAdocao(animal, nome, contato);
         notificacaoService.notificarNovaSolicitacao(solicitacao);
-        System.out.println("Solicitação " + solicitacao.getId() + " registrada com status "
-                + solicitacao.getStatus() + ".");
+        System.out.println("Solicitação de adoção registrada com sucesso! ID: "
+                + solicitacao.getId() + ". Status: " + solicitacao.getStatus() + ".");
     }
 
     private static void analisarSolicitacao(Scanner scanner, Administrador administrador,
@@ -402,7 +444,8 @@ public class Main {
         };
         adocaoService.atualizarSolicitacao(solicitacaoId, status, administrador)
                 .forEach(notificacaoService::notificarAtualizacaoSolicitacao);
-        System.out.println("Solicitação " + solicitacaoId + " atualizada para " + status + ".");
+        System.out.println("Solicitação " + solicitacaoId
+                + " analisada com sucesso. Novo status: " + status + ".");
     }
 
     private static void registrarDevolucao(Scanner scanner, Administrador administrador,
@@ -414,7 +457,7 @@ public class Main {
         SolicitacaoAdocao solicitacao = adocaoService.registrarDevolucao(
                 solicitacaoId, motivo, administrador, animalService);
         notificacaoService.notificarAtualizacaoSolicitacao(solicitacao);
-        System.out.println("Devolução da adoção " + solicitacao.getId() + " registrada.");
+        System.out.println("Devolução da adoção " + solicitacao.getId() + " registrada com sucesso.");
     }
 
     private static void listarHistoricoAdocoes(AdocaoService adocaoService) {
@@ -461,7 +504,8 @@ public class Main {
                 ? lerDataObrigatoria(scanner, "Data de vencimento da vacina") : null;
         RegistroMedico registro = saudeService.registrarAtendimento(
                 animalId, veterinario, descricao, tipo, data, dataVencimento);
-        System.out.println("Atendimento registrado com o ID " + registro.getId() + ".");
+        System.out.println("Atendimento veterinário registrado com sucesso! ID: "
+                + registro.getId() + ".");
     }
 
     private static void listarNotificacoes(Usuario usuario,
@@ -484,7 +528,7 @@ public class Main {
         String titulo = lerTexto(scanner, "Título do aviso: ");
         String mensagem = lerTexto(scanner, "Mensagem: ");
         notificacaoService.publicarAviso(titulo, mensagem, administrador);
-        System.out.println("Aviso publicado.");
+        System.out.println("Aviso publicado com sucesso.");
     }
 
     private static void exibirRelatorioEstatistico(Administrador administrador,
@@ -525,42 +569,31 @@ public class Main {
     }
 
     private static void cadastrarUsuario(Scanner scanner, UsuarioService usuarioService,
-            AutenticacaoService autenticacaoService) {
+            AutenticacaoService autenticacaoService, Administrador administradorResponsavel,
+            ArmazenamentoContas armazenamentoContas) throws IOException {
         System.out.println("\n--- Cadastro de usuário ---");
-        int tipoOpcao = lerInteiro(scanner, "Tipo (1 - voluntário, 2 - veterinário, 3 - administrador): ");
+        String tiposDisponiveis = administradorResponsavel.isPrincipal()
+                ? "Tipo (1 - voluntário, 2 - veterinário, 3 - administrador): "
+                : "Tipo (1 - voluntário, 2 - veterinário): ";
+        int tipoOpcao = lerInteiro(scanner, tiposDisponiveis);
         String tipo = switch (tipoOpcao) {
             case 1 -> "Voluntário";
             case 2 -> "Veterinário";
             case 3 -> "Administrador";
             default -> throw new IllegalArgumentException("Tipo de usuário inválido.");
         };
-        String nome = lerTexto(scanner, "Nome: ");
-        String email = lerTexto(scanner, "E-mail: ");
-        String telefone = lerTexto(scanner, "Telefone: ");
-        String crmv = tipo.equals("Veterinário") ? lerTexto(scanner, "CRMV: ") : "";
-        String minimoSenha = tipo.equals("Administrador") ? "6" : "12";
-        String senha = lerTexto(scanner, "Senha (mínimo " + minimoSenha + " caracteres): ");
-        AutenticacaoService.validarSenha(senha, tipo);
-
-        Usuario usuario = usuarioService.cadastrar(tipo, nome, email, telefone, crmv, "");
-        autenticacaoService.registrarSenha(usuario, senha);
-        System.out.println("Usuário cadastrado com o ID " + usuario.getId() + ".");
+        if ("Administrador".equals(tipo) && !administradorResponsavel.isPrincipal()) {
+            throw new IllegalStateException(
+                    "Somente o administrador principal pode criar outros administradores.");
+        }
+        Usuario usuario = cadastrarContaPorTipo(scanner, usuarioService, autenticacaoService, tipo, false);
+        armazenamentoContas.salvar(usuarioService, autenticacaoService);
+        exibirMensagemCadastro(usuario);
     }
 
-    private static void listarUsuarios(UsuarioService usuarioService) {
-        System.out.println("\n--- Usuários cadastrados ---");
-        if (usuarioService.listarTodos().isEmpty()) {
-            System.out.println("Nenhum usuário cadastrado.");
-            return;
-        }
-        for (Usuario usuario : usuarioService.listarTodos()) {
-            System.out.printf("%s | %s | %s | %s%n",
-                    usuario.getId(), usuario.getClass().getSimpleName(),
-                    usuario.getNome(), usuario.getEmail());
-        }
-    }
-
-    private static void aprovarVeterinario(Scanner scanner, UsuarioService usuarioService) {
+    private static void aprovarVeterinario(Scanner scanner, UsuarioService usuarioService,
+            AutenticacaoService autenticacaoService, ArmazenamentoContas armazenamentoContas)
+            throws IOException {
         List<Veterinario> pendentes = usuarioService.listarTodos().stream()
                 .filter(Veterinario.class::isInstance)
                 .map(Veterinario.class::cast)
@@ -584,7 +617,24 @@ public class Main {
             throw new IllegalStateException("Este veterinário já foi aprovado.");
         }
         veterinario.setAprovado(true);
-        System.out.println("Cadastro do veterinário aprovado.");
+        armazenamentoContas.salvar(usuarioService, autenticacaoService);
+        System.out.println("Veterinário " + veterinario.getNome()
+                + " aprovado com sucesso. Agora já pode fazer login.");
+    }
+
+    private static void listarUsuarios(UsuarioService usuarioService) {
+        System.out.println("\n--- Usuários cadastrados ---");
+        if (usuarioService.listarTodos().isEmpty()) {
+            System.out.println("Nenhum usuário cadastrado.");
+            return;
+        }
+        for (Usuario usuario : usuarioService.listarTodos()) {
+            String perfil = usuario instanceof Administrador administrador && administrador.isPrincipal()
+                    ? "Administrador principal" : usuario.getClass().getSimpleName();
+            System.out.printf("%s | %s | %s | %s%n",
+                    usuario.getId(), perfil,
+                    usuario.getNome(), usuario.getEmail());
+        }
     }
 
     private static void cadastrarAtividade(Scanner scanner, Administrador administrador,
@@ -595,7 +645,7 @@ public class Main {
         String descricao = lerTexto(scanner, "Descrição: ");
         LocalDate data = lerData(scanner, "Data da atividade");
         Atividade atividade = atividadeService.cadastrarAtividade(tipo, titulo, descricao, data, administrador);
-        System.out.println("Atividade cadastrada com o ID " + atividade.getId() + ".");
+        System.out.println("Atividade cadastrada com sucesso! ID: " + atividade.getId() + ".");
     }
 
     private static Atividade.Tipo lerTipoAtividade(Scanner scanner) {
@@ -620,7 +670,7 @@ public class Main {
         System.out.println("\n--- Inscrição em atividade ---");
         String atividadeId = lerTexto(scanner, "ID da atividade: ");
         atividadeService.inscreverVoluntario(atividadeId, voluntario);
-        System.out.println("Voluntário inscrito na atividade.");
+        System.out.println("Inscrição na atividade concluída com sucesso.");
     }
 
     private static void listarSolicitacoes(AdocaoService adocaoService) {

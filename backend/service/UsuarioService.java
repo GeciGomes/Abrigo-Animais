@@ -10,6 +10,8 @@ import java.util.NoSuchElementException;
 import java.util.Locale;
 
 public class UsuarioService {
+    public static final String ID_ADMINISTRADOR_PRINCIPAL = "ADM001";
+
     private final List<Usuario> usuarios = new ArrayList<>();
 
     public List<Usuario> listarTodos() {
@@ -33,6 +35,11 @@ public class UsuarioService {
 
     public Usuario cadastrar(String tipo, String nome, String email, String telefone, String crmv,
             String nivelAcesso) {
+        return cadastrar(tipo, nome, email, telefone, crmv, nivelAcesso, false);
+    }
+
+    private Usuario cadastrar(String tipo, String nome, String email, String telefone, String crmv,
+            String nivelAcesso, boolean administradorPrincipal) {
         validarEmailUnico(email, null);
         String prefixo = switch (tipo) {
             case "Voluntário" -> "V";
@@ -40,15 +47,56 @@ public class UsuarioService {
             case "Administrador" -> "ADM";
             default -> throw new IllegalArgumentException("Tipo de usuário inválido.");
         };
-        int maiorId = usuarios.stream()
-                .filter(usuario -> correspondeAoTipo(usuario, tipo))
-                .map(Usuario::getId)
-                .filter(id -> id.matches(java.util.regex.Pattern.quote(prefixo) + "\\d+"))
-                .mapToInt(id -> Integer.parseInt(id.substring(prefixo.length())))
-                .max()
-                .orElse(0);
-        String id = prefixo + String.format("%03d", maiorId + 1);
-        Usuario usuario = criarInstancia(tipo, id, nome, email, telefone, crmv, nivelAcesso);
+        String id;
+        if (administradorPrincipal) {
+            id = ID_ADMINISTRADOR_PRINCIPAL;
+        } else {
+            int maiorId = usuarios.stream()
+                    .filter(usuario -> correspondeAoTipo(usuario, tipo))
+                    .map(Usuario::getId)
+                    .filter(usuarioId -> usuarioId.matches(
+                            java.util.regex.Pattern.quote(prefixo) + "\\d+"))
+                    .mapToInt(usuarioId -> Integer.parseInt(usuarioId.substring(prefixo.length())))
+                    .max()
+                    .orElse(0);
+            id = prefixo + String.format("%03d", maiorId + 1);
+        }
+        Usuario usuario = criarInstancia(
+                tipo, id, nome, email, telefone, crmv, nivelAcesso, administradorPrincipal);
+        usuarios.add(usuario);
+        return usuario;
+    }
+
+    public Administrador cadastrarAdministradorInicial(String nome, String email, String telefone) {
+        if (usuarios.stream().anyMatch(Administrador.class::isInstance)) {
+            throw new IllegalStateException("O administrador principal já foi configurado.");
+        }
+        return (Administrador) cadastrar("Administrador", nome, email, telefone,
+                "", "Total", true);
+    }
+
+    public Usuario restaurar(String tipo, String id, String nome, String email, String telefone,
+            String crmv, String nivelAcesso, boolean administradorPrincipal, boolean aprovado) {
+        if (id == null || id.isBlank()
+                || usuarios.stream().anyMatch(usuario -> usuario.getId().equals(id))) {
+            throw new IllegalArgumentException("O arquivo contém um ID de usuário inválido ou duplicado.");
+        }
+        if (administradorPrincipal && !"Administrador".equals(tipo)) {
+            throw new IllegalArgumentException("O arquivo contém um administrador principal inválido.");
+        }
+        if (administradorPrincipal && !ID_ADMINISTRADOR_PRINCIPAL.equals(id)) {
+            throw new IllegalArgumentException("O administrador principal deve usar o ID "
+                    + ID_ADMINISTRADOR_PRINCIPAL + ".");
+        }
+        if (administradorPrincipal && usuarios.stream().anyMatch(usuario ->
+                usuario instanceof Administrador administrador && administrador.isPrincipal())) {
+            throw new IllegalArgumentException("O arquivo contém mais de um administrador principal.");
+        }
+
+        validarEmailUnico(email, null);
+        Usuario usuario = criarInstancia(tipo, id, nome, email, telefone, crmv,
+                nivelAcesso, administradorPrincipal);
+        usuario.setAprovado(aprovado);
         usuarios.add(usuario);
         return usuario;
     }
@@ -59,7 +107,8 @@ public class UsuarioService {
         validarEmailUnico(email, id);
         if (!correspondeAoTipo(anterior, tipo)) {
             usuarios.remove(anterior);
-            Usuario atualizado = criarInstancia(tipo, id, nome, email, telefone, crmv, nivelAcesso);
+            Usuario atualizado = criarInstancia(tipo, id, nome, email, telefone, crmv,
+                    nivelAcesso, false);
             usuarios.add(atualizado);
             return atualizado;
         }
@@ -112,11 +161,12 @@ public class UsuarioService {
     }
 
     private Usuario criarInstancia(String tipo, String id, String nome, String email, String telefone,
-            String crmv, String nivelAcesso) {
+            String crmv, String nivelAcesso, boolean administradorPrincipal) {
         return switch (tipo) {
             case "Voluntário" -> new Voluntario(id, nome, email, telefone);
             case "Veterinário" -> new Veterinario(id, nome, email, telefone, crmv);
-            case "Administrador" -> new Administrador(id, nome, email, telefone, nivelAcesso);
+            case "Administrador" -> new Administrador(
+                    id, nome, email, telefone, nivelAcesso, administradorPrincipal);
             default -> throw new IllegalArgumentException("Tipo de usuário inválido.");
         };
     }

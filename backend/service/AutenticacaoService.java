@@ -27,11 +27,11 @@ public class AutenticacaoService {
     }
 
     public static void validarSenha(String senha) {
-        validarSenha(senha, 12);
+        validarSenha(senha, 6);
     }
 
     public static void validarSenhaAdministrador(String senha) {
-        validarSenha(senha, 6);
+        validarSenha(senha);
     }
 
     public static void validarSenha(String senha, String tipoUsuario) {
@@ -57,6 +57,32 @@ public class AutenticacaoService {
         byte[] salt = new byte[SALT_LENGTH];
         RANDOM.nextBytes(salt);
         credenciais.put(usuario.getId(), new Credencial(salt, derivar(senha, salt)));
+    }
+
+    public CredencialPersistida obterCredencialPersistida(String usuarioId) {
+        Credencial credencial = credenciais.get(usuarioId);
+        if (credencial == null) {
+            throw new IllegalStateException("A conta não possui uma senha registrada.");
+        }
+        return new CredencialPersistida(
+                Base64.getEncoder().encodeToString(credencial.salt),
+                Base64.getEncoder().encodeToString(credencial.hash));
+    }
+
+    public void restaurarCredencial(String usuarioId, CredencialPersistida credencialPersistida) {
+        usuarioService.buscarPorId(usuarioId);
+        byte[] salt;
+        byte[] hash;
+        try {
+            salt = Base64.getDecoder().decode(credencialPersistida.salt());
+            hash = Base64.getDecoder().decode(credencialPersistida.hash());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("O arquivo contém credenciais inválidas.", exception);
+        }
+        if (salt.length != SALT_LENGTH || hash.length != KEY_LENGTH / 8) {
+            throw new IllegalArgumentException("O arquivo contém credenciais inválidas.");
+        }
+        credenciais.put(usuarioId, new Credencial(salt, hash));
     }
 
     public Sessao entrar(String email, String senha) {
@@ -110,6 +136,9 @@ public class AutenticacaoService {
     }
 
     private record Credencial(byte[] salt, byte[] hash) {
+    }
+
+    public record CredencialPersistida(String salt, String hash) {
     }
 
     public record Sessao(String token, Usuario usuario) {
