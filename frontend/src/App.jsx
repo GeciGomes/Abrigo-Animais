@@ -531,7 +531,9 @@ export default function App() {
                   <select name="tipo" required value={tipoUsuario} onChange={(evento) => setTipoUsuario(evento.target.value)}>
                     <option value="Voluntário">Voluntário</option>
                     <option value="Veterinário">Veterinário</option>
-                    <option value="Administrador">Administrador</option>
+                    {sessao.usuario.administradorPrincipal && (
+                      <option value="Administrador">Administrador</option>
+                    )}
                   </select>
                 </label>
                 <label>Nome completo:<input name="nome" type="text" required defaultValue={usuarioEditando?.nome || ''} /></label>

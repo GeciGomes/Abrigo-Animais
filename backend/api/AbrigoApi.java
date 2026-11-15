@@ -289,12 +289,12 @@ public class AbrigoApi {
             Usuario existente = usuarioService.buscarPorId(parts[2]);
             String tipoAtualizado = text(body, "tipo");
             if (existente instanceof Administrador alvo) {
-                if (alvo.isPrincipal() && !"Administrador".equals(tipoAtualizado)) {
-                    throw new IllegalArgumentException("O administrador principal não pode ser rebaixado.");
-                }
-                if (!alvo.isPrincipal() && !administrador.isPrincipal()) {
+                if (!alvo.getId().equals(administrador.getId())) {
                     throw new AcessoNegadoException(
-                            "Somente o administrador principal pode alterar outros administradores.");
+                            "Administradores só podem atualizar os próprios dados.");
+                }
+                if (!"Administrador".equals(tipoAtualizado)) {
+                    throw new IllegalArgumentException("Uma conta de administrador não pode mudar de perfil.");
                 }
             } else if ("Administrador".equals(tipoAtualizado) && !administrador.isPrincipal()) {
                 throw new AcessoNegadoException(
@@ -315,13 +315,10 @@ public class AbrigoApi {
             Administrador administrador = requireAdministrador(exchange);
             Usuario usuario = usuarioService.buscarPorId(parts[2]);
             if (usuario instanceof Administrador alvo) {
-                if (alvo.isPrincipal()) {
-                    throw new IllegalArgumentException("O administrador principal não pode ser removido.");
-                }
-                if (!administrador.isPrincipal()) {
-                    throw new AcessoNegadoException(
-                            "Somente o administrador principal pode remover outros administradores.");
-                }
+                throw new AcessoNegadoException(
+                        alvo.isPrincipal()
+                                ? "O administrador principal não pode ser removido."
+                                : "Contas de administrador não podem ser removidas.");
             }
             if (usuario instanceof Voluntario) {
                 animalService.removerAtribuicoesDoVoluntario(usuario.getId());

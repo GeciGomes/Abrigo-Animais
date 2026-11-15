@@ -19,7 +19,8 @@ Trabalho final de Programação Orientada a Objetos.
 
 ## Primeiro acesso e perfis
 - No menu inicial, escolha fazer login ou cadastrar uma conta de voluntário, veterinário ou administrador. O primeiro administrador cadastrado se torna o administrador principal e recebe o ID fixo `ADM001`.
-- Depois que o administrador principal existe, somente ele, após fazer login, pode cadastrar outros administradores pelo menu de usuários. Administradores secundários não podem criar outros administradores.
+- Se o administrador principal já existe, entre com essa conta e escolha `6. Cadastrar usuário` para criar outro administrador. Assim, os dados de login são solicitados uma única vez para a nova conta. Todos os administradores usam as mesmas funções do abrigo; somente o principal pode criar outros administradores.
+- Contas de administrador não podem ser removidas ou editadas por outro administrador. Cada administrador pode atualizar os próprios dados.
 - Voluntários podem criar conta pública. Veterinários também podem se cadastrar, mas precisam da aprovação de um administrador para entrar.
 - As contas são salvas localmente em `~/.abrigo-animais/contas.json`; as senhas são armazenadas como hashes. Os demais dados do abrigo continuam em memória e são perdidos ao encerrar o programa.
 - A conta principal não pode ser rebaixada nem removida.

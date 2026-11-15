@@ -163,24 +163,21 @@ public class Main {
         System.out.println("\n--- Criar conta ---");
         boolean administradorConfigurado = usuarioService.listarTodos().stream()
                 .anyMatch(Administrador.class::isInstance);
-        String promptTipo = administradorConfigurado
-                ? "Tipo (1 - voluntário, 2 - veterinário): "
-                : "Tipo (1 - voluntário, 2 - veterinário, 3 - administrador principal): ";
-        int tipoOpcao = lerInteiro(scanner, promptTipo);
+        int tipoOpcao = lerInteiro(scanner,
+                "Tipo (1 - voluntário, 2 - veterinário, 3 - administrador): ");
         String tipo = switch (tipoOpcao) {
             case 1 -> "Voluntário";
             case 2 -> "Veterinário";
-            case 3 -> {
-                if (administradorConfigurado) {
-                    throw new IllegalArgumentException(
-                            "Para cadastrar outro administrador, entre com a conta do administrador principal.");
-                }
-                yield "Administrador";
-            }
+            case 3 -> "Administrador";
             default -> throw new IllegalArgumentException("Escolha um dos tipos de usuário disponíveis.");
         };
         if ("Administrador".equals(tipo) && !administradorConfigurado) {
             cadastrarPrimeiroAdministrador(scanner, usuarioService, autenticacaoService, armazenamentoContas);
+            return;
+        }
+        if ("Administrador".equals(tipo)) {
+            System.out.println("Para cadastrar outro administrador, faça login com a conta principal "
+                    + "e use a opção 6. Cadastrar usuário.");
             return;
         }
         Usuario usuario = cadastrarContaPorTipo(scanner, usuarioService, autenticacaoService, tipo, false);
