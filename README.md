@@ -3,6 +3,9 @@
 Sistema de gerenciamento de abrigos e resgates de animais, em Java (console).
 Trabalho final de Programação Orientada a Objetos.
 
+## Repositório do Projeto
+Link: https://github.com/GeciGomes/Abrigo-Animais
+
 ## Como executar
 1. Clone o repositório e entre na pasta do projeto, onde está o `pom.xml`:
 
@@ -16,6 +19,3 @@ Trabalho final de Programação Orientada a Objetos.
    ```bash
    mvn clean compile exec:java -Dexec.mainClass=backend.Main
    ```
-## Repositório do Projeto
-Link: https://github.com/GeciGomes/Abrigo-Animais
-
